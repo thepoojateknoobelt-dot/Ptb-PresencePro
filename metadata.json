@@ -1,0 +1,7 @@
+{
+  "name": "PTB HRMS Admin Panel",
+  "description": "A comprehensive HR Management System for tracking attendance, shifts, departments, advances, and payroll with minute-based precision.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}
