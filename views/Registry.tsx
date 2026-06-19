@@ -600,6 +600,193 @@ const Registry: React.FC = () => {
           "January", "February", "March", "April", "May", "June",
           "July", "August", "September", "October", "November", "December"
         ];
+
+        const handleExportCSV = () => {
+          let csvContent = "Date,Day,Arrival (In),Departure (Out),Duration,Status,Late Minutes,OT Minutes,Penalty Minutes\n";
+          for (let d = 1; d <= daysInMonth; d++) {
+            const dateStr = `${detailsYear}-${(detailsMonth + 1).toString().padStart(2, '0')}-${d.toString().padStart(2, '0')}`;
+            const record = detailsAttendance.find(r => r.date === dateStr);
+            const statusInfo = getDayStatus(dateStr, record);
+            const cellDateObj = new Date(dateStr + 'T00:00:00');
+            const dayName = cellDateObj.toLocaleDateString('en-IN', { weekday: 'short' });
+            
+            const dateVal = `${d.toString().padStart(2, '0')} ${monthsList[detailsMonth].slice(0, 3)}`;
+            const arrivalVal = record?.checkInLocal || "—";
+            const departureVal = record?.checkOutLocal ? record.checkOutLocal : record?.checkInLocal ? "Active" : "—";
+            const durationVal = record?.metrics?.workingMinutes ? formatMinutes(record.metrics.workingMinutes) : "—";
+            const statusVal = statusInfo.label;
+            const lateVal = record?.metrics?.lateMinutes || 0;
+            const otVal = record?.metrics?.otMinutes || 0;
+            const penaltyVal = record?.metrics?.penaltyMinutes || 0;
+
+            csvContent += `"${dateVal}","${dayName}","${arrivalVal}","${departureVal}","${durationVal}","${statusVal}",${lateVal},${otVal},${penaltyVal}\n`;
+          }
+          const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+          const url = URL.createObjectURL(blob);
+          const link = document.createElement("a");
+          link.setAttribute("href", url);
+          link.setAttribute("download", `Attendance_${selectedEmployeeForDetails.name}_${monthsList[detailsMonth]}_${detailsYear}.csv`);
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+        };
+
+        const handlePrint = () => {
+          const printWindow = window.open('', '_blank');
+          if (!printWindow) {
+            alert("Please allow popups to print the report");
+            return;
+          }
+          
+          let tableRows = '';
+          for (let d = 1; d <= daysInMonth; d++) {
+            const dateStr = `${detailsYear}-${(detailsMonth + 1).toString().padStart(2, '0')}-${d.toString().padStart(2, '0')}`;
+            const record = detailsAttendance.find(r => r.date === dateStr);
+            const statusInfo = getDayStatus(dateStr, record);
+            const cellDateObj = new Date(dateStr + 'T00:00:00');
+            const dayName = cellDateObj.toLocaleDateString('en-IN', { weekday: 'short' });
+            
+            const dateVal = `${d.toString().padStart(2, '0')} ${monthsList[detailsMonth].slice(0, 3)} (${dayName})`;
+            const arrivalVal = record?.checkInLocal || "—";
+            const departureVal = record?.checkOutLocal ? record.checkOutLocal : record?.checkInLocal ? "Active" : "—";
+            const durationVal = record?.metrics?.workingMinutes ? formatMinutes(record.metrics.workingMinutes) : "—";
+            const statusVal = statusInfo.label;
+            
+            let auditVal = '—';
+            if (record?.metrics) {
+              const auditParts = [];
+              if (record.metrics.lateMinutes > 0) auditParts.push(`Late: ${record.metrics.lateMinutes}m`);
+              if (record.metrics.otMinutes > 0) auditParts.push(`OT: ${record.metrics.otMinutes}m`);
+              if (record.metrics.penaltyMinutes > 0) auditParts.push(`Penalty: ${record.metrics.penaltyMinutes}`);
+              if (auditParts.length > 0) auditVal = auditParts.join(', ');
+              else auditVal = 'Standard Run';
+            }
+
+            tableRows += `
+              <tr>
+                <td>${dateVal}</td>
+                <td>${arrivalVal}</td>
+                <td>${departureVal}</td>
+                <td>${durationVal}</td>
+                <td>${statusVal}</td>
+                <td>${auditVal}</td>
+              </tr>
+            `;
+          }
+
+          printWindow.document.write(`
+            <html>
+              <head>
+                <title>Attendance Report - ${selectedEmployeeForDetails.name}</title>
+                <style>
+                  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; color: #333; padding: 20px; }
+                  .header { display: flex; justify-content: space-between; border-bottom: 2px solid #333; padding-bottom: 15px; margin-bottom: 20px; }
+                  .profile-details { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-bottom: 20px; background: #f8fafc; padding: 15px; border-radius: 8px; border: 1px solid #e2e8f0; }
+                  .profile-label { font-weight: bold; color: #64748b; font-size: 11px; text-transform: uppercase; }
+                  .profile-val { font-size: 14px; font-weight: bold; color: #1e293b; }
+                  .metrics-summary { display: flex; gap: 15px; margin-bottom: 20px; }
+                  .metric-card { flex: 1; border: 1px solid #e2e8f0; padding: 10px; border-radius: 8px; text-align: center; }
+                  .metric-title { font-size: 10px; font-weight: bold; color: #64748b; text-transform: uppercase; margin-bottom: 5px; }
+                  .metric-value { font-size: 20px; font-weight: bold; color: #0f172a; }
+                  table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+                  th, td { border: 1px solid #e2e8f0; padding: 8px 12px; text-align: left; font-size: 12px; }
+                  th { background-color: #f1f5f9; font-weight: bold; color: #475569; }
+                  tr:nth-child(even) { background-color: #f8fafc; }
+                  @media print {
+                    body { padding: 0; }
+                    .no-print { display: none; }
+                  }
+                </style>
+              </head>
+              <body>
+                <div class="header">
+                  <div>
+                    <h1 style="margin: 0; font-size: 22px;">POOJA TEKNO BELT</h1>
+                    <p style="margin: 5px 0 0 0; font-size: 12px; color: #64748b; text-transform: uppercase; font-weight: bold;">Workforce Attendance Ledger</p>
+                  </div>
+                  <div style="text-align: right;">
+                    <h2 style="margin: 0; font-size: 18px; color: #4f46e5;">Monthly Report</h2>
+                    <p style="margin: 5px 0 0 0; font-size: 12px; font-weight: bold;">${monthsList[detailsMonth]} ${detailsYear}</p>
+                  </div>
+                </div>
+
+                <div class="profile-details">
+                  <div>
+                    <span class="profile-label">Employee Name</span>
+                    <div class="profile-val">${selectedEmployeeForDetails.name}</div>
+                  </div>
+                  <div>
+                    <span class="profile-label">Employee ID</span>
+                    <div class="profile-val">${selectedEmployeeForDetails.id}</div>
+                  </div>
+                  <div>
+                    <span class="profile-label">Department</span>
+                    <div class="profile-val">${selectedEmployeeForDetails.department}</div>
+                  </div>
+                  <div>
+                    <span class="profile-label">Shift Schedule</span>
+                    <div class="profile-val">${selectedEmployeeForDetails.shift}</div>
+                  </div>
+                  <div>
+                    <span class="profile-label">Rest Cycle</span>
+                    <div class="profile-val">${selectedEmployeeForDetails.weekOff.replace('_', ' ')}</div>
+                  </div>
+                  <div>
+                    <span class="profile-label">Compensation</span>
+                    <div class="profile-val">₹${selectedEmployeeForDetails.monthlySalary.toLocaleString('en-IN')}/month</div>
+                  </div>
+                </div>
+
+                <div class="metrics-summary">
+                  <div class="metric-card">
+                    <div class="metric-title">Present Days</div>
+                    <div class="metric-value" style="color: #16a34a;">${monthlyMetrics.present}</div>
+                  </div>
+                  <div class="metric-card">
+                    <div class="metric-title">Absent Days</div>
+                    <div class="metric-value" style="color: #dc2626;">${monthlyMetrics.absent}</div>
+                  </div>
+                  <div class="metric-card">
+                    <div class="metric-title">Late Count</div>
+                    <div class="metric-value" style="color: #d97706;">${monthlyMetrics.late}</div>
+                  </div>
+                  <div class="metric-card">
+                    <div class="metric-title">Offs / Holidays</div>
+                    <div class="metric-value" style="color: #4f46e5;">${monthlyMetrics.weekOffs + monthlyMetrics.hols}</div>
+                  </div>
+                </div>
+
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Date / Day</th>
+                      <th>Arrival (In)</th>
+                      <th>Departure (Out)</th>
+                      <th>Duration</th>
+                      <th>Status</th>
+                      <th>Audit Details</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    ${tableRows}
+                  </tbody>
+                </table>
+
+                <div style="margin-top: 50px; display: flex; justify-content: space-between;" class="no-print">
+                  <button onclick="window.print();" style="background: #4f46e5; color: white; border: none; padding: 10px 20px; border-radius: 6px; font-weight: bold; cursor: pointer;">Print Report</button>
+                  <button onclick="window.close();" style="background: #e2e8f0; color: #475569; border: none; padding: 10px 20px; border-radius: 6px; font-weight: bold; cursor: pointer;">Close Window</button>
+                </div>
+                
+                <script>
+                  window.onload = function() {
+                    window.print();
+                  }
+                </script>
+              </body>
+            </html>
+          `);
+          printWindow.document.close();
+        };
         
         // Generate grid items
         const gridCells: { isPadding: boolean; day: number; dateString: string }[] = [];
@@ -854,6 +1041,26 @@ const Registry: React.FC = () => {
                       className="w-9 h-9 rounded-xl bg-slate-50 hover:bg-indigo-600 hover:text-white flex items-center justify-center transition-all border border-slate-100 shadow-sm"
                     >
                       <i className="fas fa-chevron-right text-xs"></i>
+                    </button>
+
+                    <div className="w-px h-6 bg-slate-200 mx-1 hidden md:block"></div>
+
+                    <button 
+                      onClick={handleExportCSV} 
+                      className="h-9 px-3.5 rounded-xl bg-emerald-50 hover:bg-emerald-600 text-emerald-700 hover:text-white flex items-center gap-1.5 transition-all border border-emerald-100 shadow-sm font-black uppercase text-[10px] tracking-wider"
+                      title="Export to CSV"
+                    >
+                      <i className="fas fa-file-csv text-xs"></i>
+                      <span>CSV</span>
+                    </button>
+
+                    <button 
+                      onClick={handlePrint} 
+                      className="h-9 px-3.5 rounded-xl bg-indigo-50 hover:bg-indigo-600 text-indigo-700 hover:text-white flex items-center gap-1.5 transition-all border border-indigo-100 shadow-sm font-black uppercase text-[10px] tracking-wider"
+                      title="Print Monthly Report"
+                    >
+                      <i className="fas fa-print text-xs"></i>
+                      <span>Print</span>
                     </button>
 
                     {/* Close button */}
