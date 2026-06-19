@@ -27,19 +27,10 @@ const App: React.FC = () => {
     const checkUser = async () => {
       try {
         const res = await axios.get('/api/auth/me');
-        if (res.data && res.data.email) {
-          const email = res.data.email.trim();
-          const upperEmail = email.toUpperCase();
-          const domain = upperEmail.split('@')[1];
-          
-          const isAuthorized = domain === 'PTB.COM' || domain === 'INTERMESH.COM' || domain === '123456';
-          
-          if (isAuthorized) {
-            const role = upperEmail === APP_EMAILS.ACCOUNTANT.toUpperCase() ? 'ACCOUNTANT' : 'ADMIN';
-            setCurrentUser({ email: email, role });
-          } else {
-            setCurrentUser(null);
-          }
+        if (res.data && res.data.user) {
+          const email = res.data.email || 'admin@ptb.com';
+          const role = res.data.user.role === 'accountant' ? 'ACCOUNTANT' : 'ADMIN';
+          setCurrentUser({ email: email, role });
         } else {
           setCurrentUser(null);
         }

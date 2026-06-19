@@ -21,15 +21,6 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
 
     try {
       const trimmedEmail = email.trim();
-      const upperEmail = trimmedEmail.toUpperCase();
-      const domain = upperEmail.split('@')[1];
-      
-      const isAuthorized = domain === 'PTB.COM' || domain === 'INTERMESH.COM' || domain === '123456';
-
-      if (!isAuthorized) {
-        throw new Error('Access Denied. Only @ptb.com, @intermesh.com and @123456 emails are authorized for this portal.');
-      }
-
       await axios.post('/api/auth/login', { email: trimmedEmail, password });
       onLogin(trimmedEmail);
     } catch (err: any) {
