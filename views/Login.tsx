@@ -9,7 +9,7 @@ interface LoginProps {
 }
 
 const Login: React.FC<LoginProps> = ({ onLogin }) => {
-  const [email, setEmail] = useState('');
+  const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<React.ReactNode | string>('');
@@ -20,18 +20,20 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
     setError('');
 
     try {
-      const trimmedEmail = email.trim();
-      const upperEmail = trimmedEmail.toUpperCase();
-      const domain = upperEmail.split('@')[1];
-      
-      const isAuthorized = domain === 'PTB.COM' || domain === 'INTERMESH.COM' || domain === '123456';
-
-      if (!isAuthorized) {
-        throw new Error('Access Denied. Only @ptb.com, @intermesh.com and @123456 emails are authorized for this portal.');
+      const trimmedUsername = username.trim();
+      const payload: any = { password };
+      if (trimmedUsername.includes('@')) {
+        payload.email = trimmedUsername;
+      } else {
+        payload.username = trimmedUsername;
       }
 
-      await axios.post('/api/auth/login', { email: trimmedEmail, password });
-      onLogin(trimmedEmail);
+      const res = await axios.post('/api/auth/login', payload);
+      const loggedUser = res.data.user;
+      
+      // Determine the role and map it to a mock system email for local storage/state compatibility
+      const userEmail = loggedUser.role === 'admin' ? 'admin@ptb.com' : 'account@ptb.com';
+      onLogin(userEmail);
     } catch (err: any) {
       console.error("Login attempt failed:", err);
       
@@ -61,13 +63,13 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
 
           <form onSubmit={handleSubmit} className="space-y-5">
             <div>
-              <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Authorized Email</label>
+              <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">UserID / Username</label>
               <input
-                type="email"
+                type="text"
                 required
-                placeholder="staff@ptb.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                placeholder="Enter admin, dev, or email..."
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
                 className="w-full px-5 py-4 rounded-2xl border-2 border-gray-100 focus:border-indigo-600 outline-none transition-all font-bold"
               />
             </div>
